@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dashboard Ceu Ipa | Dashboard Management System</title>
+<meta name="description" content="Dashboard internal untuk pemilik dan manajer Catering Ceu Ipa: ringkasan omzet, laporan penjualan, stok bahan baku, monitoring kasir & karyawan, dan laporan keuangan.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="logo-emoji">🍽</span>
+    <div>
+      <span id="brandShopName">Warung Ceu Ipa</span>
+      <small>Dashboard Management System</small>
+    </div>
+  </div>
+  <div class="topbar__actions">
+    <span id="kasirStatusPill" class="status-pill"><span class="dot"></span><span class="lbl">Kasir</span></span>
+    <div class="role-switch" title="Simulasi login sebagai peran (demo)">
+      <button data-role="owner">Owner</button>
+      <button data-role="manajer">Manajer</button>
+    </div>
+    <button id="themeToggle" class="icon-btn" aria-label="Ganti tema">🌙</button>
+    <button id="openSettings" class="icon-btn" aria-label="Pengaturan">⚙️</button>
+  </div>
+</header>
+
+<div class="app-shell">
+  <nav class="side-nav" id="sideNav" aria-label="Navigasi utama"></nav>
+
+  <main class="main">
+
+    <!-- MODULE 1 — RINGKASAN HARIAN -->
+    <section class="section active" id="sec-ringkasan">
+      <div class="section-head">
+        <div>
+          <h1>Ringkasan Harian</h1>
+          <p>Snapshot kondisi bisnis hari ini, diperbarui otomatis.</p>
+        </div>
+      </div>
+      <div id="alertBanner"></div>
+      <div class="grid kpi-grid" id="kpiGrid"></div>
+
+      <div class="panel card" id="ringkasanChartPanel">
+        <div class="panel-head">
+          <h2>Omzet per Jam Hari Ini</h2>
+          <span class="hint" id="peakHourNote"></span>
+        </div>
+        <div class="chart-box"><canvas id="chartHourlyMini"></canvas></div>
+      </div>
+    </section>
+
+    <!-- MODULE 2 — LAPORAN PENJUALAN -->
+    <section class="section" id="sec-penjualan">
+      <div class="section-head">
+        <div>
+          <h1>Laporan Penjualan</h1>
+          <p>Grafik penjualan, analisis menu, dan perbandingan periode.</p>
+        </div>
+        <div class="chip-row no-print" id="penjualanExportRow">
+          <button class="btn sm" id="exportMenuCsv">⬇️ Excel/CSV</button>
+          <button class="btn sm" id="exportPdf">🖨️ PDF</button>
+        </div>
+      </div>
+
+      <div class="chip-row no-print" id="periodChips" style="margin-bottom:14px"></div>
+
+      <div id="penjualanLocked" class="locked-state" style="display:none">
+        <div class="ic">🔒</div>
+        <h3>Grafik omzet &amp; perbandingan periode khusus Owner</h3>
+        <p>Manajer tetap dapat melihat data operasional menu (qty terjual, trend, status) di tabel Analisis Menu.</p>
+      </div>
+
+      <div id="penjualanFinancial">
+        <div class="grid" style="grid-template-columns:1fr;gap:12px">
+          <div class="card">
+            <div class="panel-head"><h2>Grafik Penjualan per Jam (06.00–22.00)</h2></div>
+            <div class="chart-box lg"><canvas id="chartHourly"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><h2>Perbandingan Omzet 7 Hari Terakhir</h2></div>
+            <div class="chart-box"><canvas id="chartWeekly"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Perbandingan Periode</h2></div>
+          <div class="stat-mini-row" id="periodCompare"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Analisis Menu</h2><span class="hint">Klik judul kolom untuk urutkan</span></div>
+        <div class="table-wrap">
+          <table id="menuTable">
+            <thead id="menuTableHead">
+              <tr>
+                <th class="sortable" data-col="nama">Nama Menu</th>
+                <th class="sortable" data-col="qty">Qty Terjual</th>
+                <th class="sortable" data-col="revenue">Total Pendapatan</th>
+                <th class="sortable" data-col="marginPct">Margin Kasar</th>
+                <th class="sortable" data-col="trend">Trend</th>
+                <th class="sortable" data-col="status">Status</th>
+              </tr>
+            </thead>
+            <tbody id="menuTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 3 — MANAJEMEN STOK -->
+    <section class="section" id="sec-stok">
+      <div class="section-head">
+        <div>
+          <h1>Manajemen Stok &amp; Bahan Baku</h1>
+          <p>Inventaris real-time dan estimasi kecukupan stok.</p>
+        </div>
+        <div class="chip-row no-print">
+          <button class="btn sm primary" id="genShoppingList">🛒 Buat Daftar Belanja</button>
+        </div>
+      </div>
+
+      <div id="stokAlert"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Bahan Baku</th><th>Stok Saat Ini</th><th>Batas Minimum</th><th>Status</th><th>Estimasi Cukup</th></tr></thead>
+          <tbody id="stokTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Riwayat Pembelian Bahan Baku</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Bahan</th><th>Jumlah</th><th>Supplier</th><th>Biaya</th></tr></thead>
+            <tbody id="purchaseHistBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel card">
+        <div class="panel-head"><h2>Catat Pengeluaran Pembelian (v2)</h2></div>
+        <form id="expenseForm" class="form-grid cols-3">
+          <div class="field"><label for="expenseItem">Item / Bahan</label><input id="expenseItem" type="text" placeholder="cth. Beras 25kg" required></div>
+          <div class="field"><label for="expenseAmount">Biaya (Rp)</label><input id="expenseAmount" type="number" min="0" placeholder="150000" required></div>
+          <div class="field" style="justify-content:flex-end"><button class="btn primary" type="submit">Simpan</button></div>
+        </form>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Item</th><th>Biaya</th></tr></thead>
+            <tbody id="expenseBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 4 — MONITORING KASIR & KARYAWAN -->
+    <section class="section" id="sec-kasir">
+      <div class="section-head">
+        <div>
+          <h1>Monitoring Kasir &amp; Karyawan</h1>
+          <p>Aktivitas transaksi, performa kasir, shift, dan kontrol akses.</p>
+        </div>
+        <div class="chip-row no-print">
+          <button class="btn sm" id="openPinPad">🕘 Clock-in / Clock-out</button>
+          <button class="btn sm" id="exportTxCsv">⬇️ CSV</button>
+        </div>
+      </div>
+
+      <div class="panel-head"><h2>Aktivitas Kasir Hari Ini</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Waktu</th><th>Meja/Antrian</th><th>Kasir</th><th>Total</th><th>Flag</th></tr></thead>
+          <tbody id="txTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel card">
+        <div class="panel-head"><h2>Performa per Kasir (transaksi/jam)</h2></div>
+        <div class="chart-box"><canvas id="chartCashier"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Jadwal Shift &amp; Absensi</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nama</th><th>Peran</th><th>Jadwal Shift</th><th>Status Hari Ini</th></tr></thead>
+            <tbody id="shiftBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Riwayat Kehadiran</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Nama</th><th>Jam Masuk</th><th>Jam Keluar</th></tr></thead>
+            <tbody id="attendanceBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Kontrol Akses</h2></div>
+        <div class="table-wrap">
+          <table id="accessTable">
+            <thead><tr><th>Fitur</th><th>Owner</th><th>Manajer</th></tr></thead>
+            <tbody>
+              <tr><td>Lihat omzet &amp; laba</td><td>✅</td><td>❌</td></tr>
+              <tr><td>Pantau transaksi kasir</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Kelola stok</td><td>✅</td><td>✅</td></tr>
+              <tr><td>Lihat laporan karyawan</td><td>✅</td><td>✅ (terbatas)</td></tr>
+              <tr><td>Ubah harga menu</td><td>✅</td><td>❌</td></tr>
+              <tr><td>Export laporan keuangan</td><td>✅</td><td>❌</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 5 — LAPORAN KEUANGAN (OWNER ONLY) -->
+    <section class="section" id="sec-keuangan">
+      <div class="section-head">
+        <div>
+          <h1>Laporan Keuangan</h1>
+          <p>Khusus Owner: laba rugi, arus kas, dan target pencapaian.</p>
+        </div>
+        <div class="chip-row no-print" id="keuanganActions">
+          <button class="btn sm" id="exportKeuanganPdf">🖨️ PDF</button>
+        </div>
+      </div>
+
+      <div id="keuanganLocked" class="locked-state">
+        <div class="ic">🔒</div>
+        <h3>Laporan Keuangan hanya untuk Owner</h3>
+        <p>Sesuai kontrol akses, peran Manajer tidak dapat melihat laba, arus kas, atau target bisnis. Beralih ke peran Owner di kanan atas untuk membuka bagian ini.</p>
+      </div>
+
+      <div id="keuanganContent">
+        <div class="card">
+          <div class="panel-head"><h2>Laporan Laba Rugi Sederhana</h2></div>
+          <div class="stat-mini-row" id="plSummary"></div>
+          <form id="biayaForm" class="form-grid cols-3" style="margin-top:14px">
+            <div class="field"><label for="biayaSewa">Sewa / bulan (Rp)</label><input id="biayaSewa" type="number" min="0"></div>
+            <div class="field"><label for="biayaListrik">Listrik / bulan (Rp)</label><input id="biayaListrik" type="number" min="0"></div>
+            <div class="field"><label for="biayaGaji">Gaji / bulan (Rp)</label><input id="biayaGaji" type="number" min="0"></div>
+            <div class="field" style="grid-column:1/-1"><button class="btn primary" type="submit">Simpan Biaya Operasional</button></div>
+          </form>
+        </div>
+
+        <div class="panel card">
+          <div class="panel-head"><h2>Grafik Laba Bulanan (12 Bulan Terakhir)</h2></div>
+          <div class="chart-box"><canvas id="chartMonthlyProfit"></canvas></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Arus Kas (Cash Flow)</h2></div>
+          <div class="stat-mini-row" id="cashflowStats"></div>
+          <div class="card" style="margin-top:12px">
+            <div class="chart-box"><canvas id="chartCashflow"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel card">
+          <div class="panel-head"><h2>Target &amp; Pencapaian</h2></div>
+          <form id="targetForm" class="form-grid cols-2">
+            <div class="field"><label for="targetHarian">Target Omzet Harian (Rp)</label><input id="targetHarian" type="number" min="0"></div>
+            <div class="field"><label for="targetBulanan">Target Omzet Bulanan (Rp)</label><input id="targetBulanan" type="number" min="0"></div>
+            <div class="field" style="grid-column:1/-1"><button class="btn primary" type="submit">Simpan Target</button></div>
+          </form>
+          <div style="margin-top:16px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px"><span>Progress Harian</span><span id="progressHarianLabel"></span></div>
+            <div class="progress"><span id="progressHarian" style="width:0%"></span></div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px"><span>Progress Bulanan</span><span id="progressBulananLabel"></span></div>
+            <div class="progress"><span id="progressBulanan" style="width:0%"></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<nav class="bottom-nav" id="bottomNav" aria-label="Navigasi bawah"></nav>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- Onboarding modal -->
+<div class="modal-overlay" id="onboardingOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Selamat Datang 👋</h3>
+      <button id="onbSkip" aria-label="Lewati">✕</button>
+    </div>
+
+    <div class="onb-step active" data-step="0">
+      <p style="font-size:13px;color:var(--ink-500)">Langkah 1 dari 3 — Data warung Anda</p>
+      <div class="form-grid" style="margin-top:12px">
+        <div class="field"><label for="onbShopName">Nama Warung</label><input id="onbShopName" type="text" placeholder="Warung Ceu Ipa"></div>
+        <div class="field"><label for="onbOwnerName">Nama Owner</label><input id="onbOwnerName" type="text" placeholder="cth. Ceu Ipa"></div>
+      </div>
+    </div>
+
+    <div class="onb-step" data-step="1">
+      <p style="font-size:13px;color:var(--ink-500)">Langkah 2 dari 3 — Hubungkan kasir Anda</p>
+      <div class="onb-option" data-method="api">
+        <span class="ic">🔌</span>
+        <div><strong>Sambungkan via API Kasir</strong><span>Sinkron otomatis tiap transaksi (Moka, Pawoon, iReap, BonApp).</span></div>
+      </div>
+      <div class="onb-option" data-method="csv">
+        <span class="ic">📄</span>
+        <div><strong>Import CSV / Excel</strong><span>Upload laporan harian dari kasir secara manual.</span></div>
+      </div>
+      <div class="onb-option" data-method="skip">
+        <span class="ic">⏭️</span>
+        <div><strong>Lewati dulu</strong><span>Coba dashboard dengan data simulasi.</span></div>
+      </div>
+      <input type="file" id="onbCsvInput" accept=".csv" class="visually-hidden">
+    </div>
+
+    <div class="onb-step" data-step="2">
+      <p style="font-size:13px;color:var(--ink-500)">Langkah 3 dari 3 — Siap dipakai</p>
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:44px">🎉</div>
+        <h3 style="margin-top:8px">Semua siap!</h3>
+        <p style="margin-top:6px;font-size:13px;color:var(--ink-500)">Dashboard utama akan menampilkan ringkasan omzet, stok, dan performa karyawan Anda.</p>
+      </div>
+    </div>
+
+    <div class="step-dots"><span></span><span></span><span></span></div>
+    <div class="modal-foot">
+      <button class="btn ghost" id="onbBack">Kembali</button>
+      <button class="btn primary" id="onbNext">Lanjut</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Pengaturan</h3>
+      <button id="closeSettings" aria-label="Tutup">✕</button>
+    </div>
+
+    <h4 style="font-size:13px;color:var(--ink-500);margin-bottom:6px">Integrasi Kasir</h4>
+    <p style="font-size:12.5px;color:var(--ink-500)">Status: <strong id="setKasirStatus" style="color:var(--ink-900)">Belum terhubung</strong></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn sm" id="setConnectApi">🔌 Sambungkan API</button>
+      <button class="btn sm" id="setImportCsv">📄 Import CSV</button>
+      <button class="btn sm" id="setDownloadSample">⬇️ Contoh CSV</button>
+      <button class="btn sm ghost" id="setDisconnect">Putuskan</button>
+    </div>
+    <input type="file" id="settingsCsvInput" accept=".csv" class="visually-hidden">
+
+    <h4 style="font-size:13px;color:var(--ink-500);margin:18px 0 2px">Notifikasi</h4>
+    <div class="switch-row">
+      <div class="txt"><strong>WhatsApp ringkasan pagi</strong><span>Laporan ringkas otomatis ke nomor owner</span></div>
+      <label class="switch"><input type="checkbox" id="setNotifWa"><span class="track"></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="txt"><strong>Push notification</strong><span>Alert stok kritis &amp; target tidak tercapai</span></div>
+      <label class="switch"><input type="checkbox" id="setNotifPush"><span class="track"></span></label>
+    </div>
+    <div class="switch-row">
+      <div class="txt"><strong>Email laporan</strong><span>Laporan mingguan/bulanan format PDF</span></div>
+      <label class="switch"><input type="checkbox" id="setNotifEmail"><span class="track"></span></label>
+    </div>
+
+    <div class="modal-foot" style="justify-content:space-between;align-items:center">
+      <button class="btn ghost sm" id="setRestartOnboarding">↺ Ulangi Onboarding</button>
+      <button class="btn primary" id="closeSettingsBottom">Selesai</button>
+    </div>
+  </div>
+</div>
+
+<!-- PIN pad modal -->
+<div class="modal-overlay" id="pinPadOverlay">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-head">
+      <h3>Clock-in / Clock-out</h3>
+      <button id="closePinPad" aria-label="Tutup">✕</button>
+    </div>
+    <p id="pinEmpName" style="text-align:center;font-size:13px;color:var(--ink-500)">Masukkan PIN karyawan</p>
+    <div class="pin-dots" id="pinDots"><span></span><span></span><span></span><span></span></div>
+    <div class="pin-pad">
+      <button data-d="1">1</button><button data-d="2">2</button><button data-d="3">3</button>
+      <button data-d="4">4</button><button data-d="5">5</button><button data-d="6">6</button>
+      <button data-d="7">7</button><button data-d="8">8</button><button data-d="9">9</button>
+      <button></button><button data-d="0">0</button><button id="pinBackspace">⌫</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/chart.umd.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
